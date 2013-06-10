@@ -27,6 +27,12 @@ class Board:
       if '*' in self.lines[i]:
         return i
 
+  def is_space(self, char):
+    return (char in '._')
+
+  def is_wall(self, char):
+    return (char in '#%')
+
   def can_move(self, direction):
     # w danym kierunku jest puste
     # lub ciag kamieni i puste
@@ -35,23 +41,23 @@ class Board:
     if direction == 'left':
       for i in range(x - 1, 0, -1):
         p = self.at(i, y)
-        if p == '.': return True
-        elif p == '#': return False
+        if self.is_space(p): return True
+        elif self.is_wall(p): return False
     elif direction == 'right':
       for i in range(x + 1, self.width):
         p = self.at(i, y)
-        if p == '.': return True
-        elif p == '#': return False
+        if self.is_space(p): return True
+        elif self.is_wall(p): return False
     elif direction == 'up':
       for i in range(y - 1, 0, -1):
         p = self.at(x, i)
-        if p == '.': return True
-        elif p == '#': return False
+        if self.is_space(p): return True
+        elif self.is_wall(p): return False
     elif direction == 'down':
       for i in range(y + 1, self.height):
         p = self.at(x, i)
-        if p == '.': return True
-        elif p == '#': return False
+        if self.is_space(p): return True
+        elif self.is_wall(p): return False
 
 
   def move(self, direction):
@@ -59,26 +65,26 @@ class Board:
     y = self.player_y()
     if direction == 'up':
       wy = y
-      while self.at(x, wy) != '.': wy -= 1
+      while not self.is_space(self.at(x, wy)): wy -= 1
       for i in range(wy, y):
         self.set(x, i, self.at(x, i+1))
       self.set(x, y, '.')
     elif direction == 'down':
       wy = y
-      while self.at(x, wy) != '.': wy += 1
+      while not self.is_space(self.at(x, wy)): wy += 1
       for i in range(wy, y, -1):
         self.set(x, i, self.at(x, i-1))
       self.set(x, y, '.')
     elif direction == 'left':
       wx = x
-      while self.at(wx, y) != '.': wx -= 1
+      while not self.is_space(self.at(wx, y)): wx -= 1
       for i in range(wx, x):
         self.set(i, y, self.at(i+1, y))
       self.set(x, y, '.')
     elif direction == 'right':
       wx = x
       # 1.znajdz pierwsze puste z prawej
-      while self.at(wx, y) != '.': wx += 1
+      while not self.is_space(self.at(wx, y)): wx += 1
       # 2.wszystko pomiedzy graczem a tym pustym przesun o 1 w prawo (to przesunie rowniez gracza)
       for i in range(wx, x, -1):
         self.set(i, y, self.at(i-1, y))
