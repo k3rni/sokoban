@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # encoding: utf-8
 
-import curses, os, atexit
+import curses, os, atexit, copy
 
 class Board:
   def __init__(self, screen, width, height, lines):
@@ -9,29 +9,70 @@ class Board:
     self.height = height
     self.width = width
     self.lines = lines
+    self.original_lines = copy.deepcopy(lines)
 
   def at(self, x, y):
     return self.lines[y][x]
 
   def set(self, x, y, value):
+    old = self.at(x, y)
+    if value == '*': # ustawiamy gdzies gracza
+      if old == '?': # teleporty
+        dy = self.find_line_with('!')
+        dx = self.find_char_pos('!')
+      elif old == '!':
+        dy = self.find_line_with('?')
+        dx = self.find_char_pos('?')
+      elif old == '/': # dzwignia, niszczy sciany typu %
+        dx = x; dy = y
+        self.demolish('%')
+      else:
+        dx = x; dy = y
+      self.real_set(dx, dy, value)
+    elif value.isupper() and old == '_': # kamien do dziury
+      self.real_set(x, y, old) # przepada
+    else:
+      self.real_set(x, y, value)
+
+  def real_set(self, x, y, value):
     # w pythonie stringi są immutable
     # self.lines[y][x] = value
     self.lines[y] = self.lines[y][:x] + value + self.lines[y][x+1:]
 
-  def player_x(self):
-    line = self.lines[self.player_y()]
-    return line.index('*')
+  def restore_space(self, x, y):
+    char = self.original_lines[y][x]
+    if self.is_space(char):
+      self.set(x, y, char)
+    else:
+      self.set(x, y, '.')
 
-  def player_y(self):
+  def find_line_with(self, char):
     for i in range(self.height):
-      if '*' in self.lines[i]:
+      if char in self.lines[i]:
         return i
 
+  def find_char_pos(self, char):
+    line = self.lines[self.find_line_with(char)]
+    return line.index(char)
+
+  def player_x(self):
+    return self.find_char_pos('*')
+
+  def player_y(self):
+    return self.find_line_with('*')
+
   def is_space(self, char):
-    return (char in '._')
+    return (char in '._?!/')
 
   def is_wall(self, char):
     return (char in '#%')
+
+  def demolish(self, char):
+    for i in range(self.height):
+      line = self.lines[i]
+      for j in range(self.width):
+        if self.at(j, i) == char:
+          self.real_set(j, i, '.')
 
   def can_move(self, direction):
     # w danym kierunku jest puste
@@ -68,19 +109,19 @@ class Board:
       while not self.is_space(self.at(x, wy)): wy -= 1
       for i in range(wy, y):
         self.set(x, i, self.at(x, i+1))
-      self.set(x, y, '.')
+      self.restore_space(x, y)
     elif direction == 'down':
       wy = y
       while not self.is_space(self.at(x, wy)): wy += 1
       for i in range(wy, y, -1):
         self.set(x, i, self.at(x, i-1))
-      self.set(x, y, '.')
+      self.restore_space(x, y)
     elif direction == 'left':
       wx = x
       while not self.is_space(self.at(wx, y)): wx -= 1
       for i in range(wx, x):
         self.set(i, y, self.at(i+1, y))
-      self.set(x, y, '.')
+      self.restore_space(x, y)
     elif direction == 'right':
       wx = x
       # 1.znajdz pierwsze puste z prawej
@@ -89,7 +130,7 @@ class Board:
       for i in range(wx, x, -1):
         self.set(i, y, self.at(i-1, y))
       # 3. za gracza postaw puste
-      self.set(x, y, '.')
+      self.restore_space(x, y)
 
 
   def draw(self, x):
